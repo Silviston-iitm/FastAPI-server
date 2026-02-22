@@ -58,16 +58,11 @@ async def upload_file(
         total_value = 0.0
         category_counts = {}
 
-        for row in rows:
-            try:
-                value = float(row.get("value", 0))
-            except:
-                value = 0
-
-            total_value += value
-
-            cat = row.get("category", "unknown")
-            category_counts[cat] = category_counts.get(cat, 0) + 1
+        if "value" in columns and "category" in columns:
+            for row in rows:
+                total_value += float(row["value"])
+                cat = row["category"]
+                category_counts[cat] = category_counts.get(cat, 0) + 1
 
         total_value = round(total_value, 2)
 
