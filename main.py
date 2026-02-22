@@ -8,12 +8,15 @@ import os
 app = FastAPI()
 
 # CORS
+from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 VALID_TOKEN = "84y69useuinziis0"
