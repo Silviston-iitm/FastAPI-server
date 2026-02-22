@@ -38,7 +38,7 @@ async def upload_file(
     x_upload_token_7844: str = Header(None),
 ):
     # 1. Auth check
-    if not x_upload_token_1848 or x_upload_token_1848 != VALID_TOKEN:
+    if not X-Upload-Token-1848 or X-Upload-Token-1848 != VALID_TOKEN:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     # 2. File type check
