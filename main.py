@@ -1,7 +1,11 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import pandas as pd
 from typing import List, Optional
+import csv
+import io
+import os
 
 app = FastAPI()
 
@@ -9,18 +13,77 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Load CSV
 df = pd.read_csv("q-fastapi.csv")
 
-@app.get("/api")
-def get_students(class_: Optional[List[str]] = Query(None, alias="class")):
-    data = df
+@app.middleware("http")
+async def add_cors_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Private-Network"] = "true"
+    return response
 
-    if class_:
-        data = df[df["class"].isin(class_)]
+VALID_TOKEN = "84y69useuinziis0"
+MAX_SIZE = 93 * 1024  # 93KB
+ALLOWED_EXTENSIONS = {".csv", ".json", ".txt"}
 
-    return {"students": data.to_dict(orient="records")}
+
+@app.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    x_upload_token_7844: str = Header(None),
+):
+    # 1. Auth check
+    if not x_upload_token_7844 or x_upload_token_7844 != VALID_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # 2. File type check
+    filename = file.filename or ""
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Bad Request")
+
+    # 3. Read and check file size
+    contents = await file.read()
+    if len(contents) > MAX_SIZE:
+        raise HTTPException(status_code=413, detail="Payload Too Large")
+
+    # 4. Parse CSV and compute statistics
+    if ext == ".csv":
+        text = contents.decode("utf-8")
+        reader = csv.DictReader(io.StringIO(text))
+        rows = list(reader)
+        columns = list(rows[0].keys()) if rows else []
+
+        total_value = 0.0
+        category_counts = {}
+        for row in rows:
+            total_value += float(row["value"])
+            cat = row["category"]
+            category_counts[cat] = category_counts.get(cat, 0) + 1
+
+        total_value = round(total_value, 2)
+
+        return JSONResponse(content={
+            "email": "24f1002710@ds.study.iitm.ac.in",
+            "filename": filename,
+            "rows": len(rows),
+            "columns": columns,
+            "totalValue": total_value,
+            "categoryCounts": category_counts,
+        })
+
+    return JSONResponse(content={
+        "email": "24f1002710@ds.study.iitm.ac.in",
+        "filename": filename,
+        "message": "File accepted",
+    })
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8001)
